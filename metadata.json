@@ -1,0 +1,6 @@
+{
+  "name": "InternReady AI",
+  "description": "Agentic Internship Copilot - Automatically discover internship opportunities, summarize them, track deadlines, check document readiness, and guide students to complete meaningful application actions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

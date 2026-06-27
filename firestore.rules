@@ -1,0 +1,147 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-+]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId 
+                     && incoming().uid == userId
+                     && incoming().keys().hasAll(['uid'])
+                     && (incoming().get('name', '') is string && incoming().get('name', '').size() <= 128)
+                     && (incoming().get('email', '') is string && incoming().get('email', '').size() <= 128)
+                     && (incoming().get('avatar', '') is string && incoming().get('avatar', '').size() <= 512)
+                     && (incoming().get('dreamRole', '') is string && incoming().get('dreamRole', '').size() <= 128)
+                     && (incoming().get('branch', '') is string && incoming().get('branch', '').size() <= 128)
+                     && (incoming().get('year', '') is string && incoming().get('year', '').size() <= 64)
+                     && (incoming().get('targetDeadline', '') is string && incoming().get('targetDeadline', '').size() <= 128)
+                     && (incoming().get('targetStipend', '') is string && incoming().get('targetStipend', '').size() <= 128)
+                     && (incoming().get('resumeUrl', '') is string && incoming().get('resumeUrl', '').size() <= 1024)
+                     && (incoming().get('cgpa', 0.0) is number || incoming().get('cgpa', 0) is int);
+      allow update: if isSignedIn() && request.auth.uid == userId
+                     && incoming().uid == existing().uid
+                     && (incoming().get('name', '') is string && incoming().get('name', '').size() <= 128)
+                     && (incoming().get('email', '') is string && incoming().get('email', '').size() <= 128)
+                     && (incoming().get('avatar', '') is string && incoming().get('avatar', '').size() <= 512)
+                     && (incoming().get('dreamRole', '') is string && incoming().get('dreamRole', '').size() <= 128)
+                     && (incoming().get('branch', '') is string && incoming().get('branch', '').size() <= 128)
+                     && (incoming().get('year', '') is string && incoming().get('year', '').size() <= 64)
+                     && (incoming().get('targetDeadline', '') is string && incoming().get('targetDeadline', '').size() <= 128)
+                     && (incoming().get('targetStipend', '') is string && incoming().get('targetStipend', '').size() <= 128)
+                     && (incoming().get('resumeUrl', '') is string && incoming().get('resumeUrl', '').size() <= 1024)
+                     && (incoming().get('cgpa', 0.0) is number || incoming().get('cgpa', 0) is int);
+      allow delete: if false; // Profiles are not deleted directly
+    }
+
+    // 2. Scanned Internships (Global Cache)
+    match /scanned_internships/{internshipId} {
+      // Any user (even guest) can read scanned internships list
+      allow list, get: if true;
+      
+      // Allow creation/updates of cache from signed in users (e.g., when saving scanned list)
+      allow create, update: if isSignedIn() 
+                     && isValidId(internshipId)
+                     && incoming().id == internshipId
+                     && incoming().keys().hasAll(['id', 'name', 'organization'])
+                     && incoming().name is string && incoming().name.size() <= 256
+                     && incoming().organization is string && incoming().organization.size() <= 256
+                     && (incoming().get('duration', '') is string && incoming().get('duration', '').size() <= 128)
+                     && (incoming().get('startDate', '') is string && incoming().get('startDate', '').size() <= 128)
+                     && (incoming().get('endDate', '') is string && incoming().get('endDate', '').size() <= 128)
+                     && (incoming().get('deadline', '') is string && incoming().get('deadline', '').size() <= 128)
+                     && (incoming().get('stipend', '') is string && incoming().get('stipend', '').size() <= 128)
+                     && (incoming().get('mode', '') is string && incoming().get('mode', '').size() <= 64)
+                     && (incoming().get('areaRequired', '') is string && incoming().get('areaRequired', '').size() <= 512)
+                     && (incoming().get('eligibility', '') is string && incoming().get('eligibility', '').size() <= 1024)
+                     && (incoming().get('applyLink', '') is string && incoming().get('applyLink', '').size() <= 2048)
+                     && (incoming().get('sourceUrl', '') is string && incoming().get('sourceUrl', '').size() <= 2048)
+                     && (incoming().get('status', '') is string && incoming().get('status', '').size() <= 64)
+                     && (incoming().get('navigationGuideline', '') is string && incoming().get('navigationGuideline', '').size() <= 2048)
+                     && (incoming().get('officialAdvertisementUrl', '') is string && incoming().get('officialAdvertisementUrl', '').size() <= 2048)
+                     && (incoming().get('deadlineSource', '') is string && incoming().get('deadlineSource', '').size() <= 512)
+                     && (incoming().get('isVerified', false) is bool)
+                     && (incoming().get('lastVerified', '') is string && incoming().get('lastVerified', '').size() <= 64)
+                     && (incoming().get('confidenceScore', 0) is int || incoming().get('confidenceScore', 0.0) is number);
+      allow delete: if false;
+    }
+
+    // 3. Tracked Internships
+    match /tracked_internships/{trackedId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() 
+                     && isValidId(trackedId)
+                     && incoming().userId == request.auth.uid
+                     && incoming().keys().hasAll(['id', 'userId', 'internshipId'])
+                     && incoming().id == trackedId
+                     && incoming().internshipId is string && incoming().internshipId.size() <= 128
+                     && (incoming().get('notes', '') is string && incoming().get('notes', '').size() <= 1024)
+                     && (incoming().get('isApplied', false) is bool)
+                     && (incoming().get('remindersEnabled', true) is bool)
+                     && (incoming().get('addedAt', '') is string && incoming().get('addedAt', '').size() <= 128);
+                     
+      allow update: if isSignedIn() 
+                     && isValidId(trackedId)
+                     && existing().userId == request.auth.uid
+                     && incoming().userId == request.auth.uid
+                     && incoming().id == existing().id
+                     && incoming().internshipId == existing().internshipId
+                     && incoming().addedAt == existing().addedAt
+                     && (incoming().get('notes', '') is string && incoming().get('notes', '').size() <= 1024)
+                     && (incoming().get('isApplied', false) is bool)
+                     && (incoming().get('remindersEnabled', true) is bool);
+                     
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 4. Action Plans
+    match /action_plans/{planId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() 
+                     && isValidId(planId)
+                     && incoming().userId == request.auth.uid
+                     && incoming().keys().hasAll(['userId', 'internshipId'])
+                     && incoming().internshipId is string && incoming().internshipId.size() <= 128
+                     && (incoming().get('recommendation', '') is string && incoming().get('recommendation', '').size() <= 2048)
+                     && (incoming().get('steps', []) is list);
+                     
+      allow update: if isSignedIn() 
+                     && isValidId(planId)
+                     && existing().userId == request.auth.uid
+                     && incoming().userId == request.auth.uid
+                     && incoming().internshipId == existing().internshipId
+                     && (incoming().get('recommendation', '') is string && incoming().get('recommendation', '').size() <= 2048)
+                     && (incoming().get('steps', []) is list);
+                     
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with document readiness and targets",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "avatar": { "type": "string" },
+        "cgpa": { "type": "number" },
+        "branch": { "type": "string" },
+        "year": { "type": "string" },
+        "dreamRole": { "type": "string" },
+        "preparedDocuments": {
+          "type": "object",
+          "description": "Mapping of document name to preparedness boolean"
+        },
+        "targetDeadline": { "type": "string" },
+        "targetStipend": { "type": "string" },
+        "resumeUrl": { "type": "string" }
+      },
+      "required": ["uid"]
+    },
+    "Internship": {
+      "title": "Internship",
+      "description": "Scanned internship details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "organization": { "type": "string" },
+        "duration": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "deadline": { "type": "string" },
+        "stipend": { "type": "string" },
+        "mode": { "type": "string" },
+        "areaRequired": { "type": "string" },
+        "eligibility": { "type": "string" },
+        "requiredDocuments": {
+          "type": "array"
+        },
+        "applyLink": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "status": { "type": "string" },
+        "navigationGuideline": { "type": "string" },
+        "officialAdvertisementUrl": { "type": "string" },
+        "deadlineSource": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "lastVerified": { "type": "string" },
+        "confidenceScore": { "type": "number" }
+      },
+      "required": ["id", "name", "organization"]
+    },
+    "TrackedInternship": {
+      "title": "TrackedInternship",
+      "description": "Indicates an internship tracked by a specific user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "internshipId": { "type": "string" },
+        "addedAt": { "type": "string" },
+        "notes": { "type": "string" },
+        "isApplied": { "type": "boolean" },
+        "remindersEnabled": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "internshipId"]
+    },
+    "ActionPlan": {
+      "title": "ActionPlan",
+      "description": "Personalized application preparation roadmap",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "internshipId": { "type": "string" },
+        "recommendation": { "type": "string" },
+        "steps": {
+          "type": "array"
+        }
+      },
+      "required": ["userId", "internshipId"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "scanned_internships/{internshipId}": {
+      "schema": "Internship",
+      "description": "Global list of scanned internships cached for all students"
+    },
+    "tracked_internships/{trackedId}": {
+      "schema": "TrackedInternship",
+      "description": "User specific internship tracking records"
+    },
+    "action_plans/{planId}": {
+      "schema": "ActionPlan",
+      "description": "User specific action plans generated for specific internships"
+    }
+  }
+}
